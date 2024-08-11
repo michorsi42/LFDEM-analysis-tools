@@ -41,7 +41,8 @@ def merge_common(lists):
 
 
 
-#%% RIGID CLUSTERS (PEBBLE GAME)
+#%% RIGID CLUSTERS
+### Using the Pebble Game to identify the rigid clusters
 
 def myRigidClusters(Dir):
     
@@ -63,6 +64,7 @@ def myRigidClusters(Dir):
 
 
 #%% PRIME RIGID CLUSTERS
+### Not considering the rigid particles that are in contact with non-rigid particles
 
 def myPrimeRigidClusters(Dir):
     
@@ -240,6 +242,7 @@ def myPrimeRigidClusters(Dir):
 
 
 #%% CLUSTER SIZE DISTRIBUTION
+### Size = number of rigid particles in a cluster
 
 def cluster_size_distribution(Dir, SSi):
     
@@ -324,6 +327,7 @@ def cluster_size_distribution(Dir, SSi):
 
 
 #%% C>=n PARTICLES
+### Identifying the particles with more than 3 or 6 constraints
 
 def C_parts_IDs(Dir):
 
@@ -407,6 +411,8 @@ def C_parts_IDs(Dir):
 
 
 #%% Z & C
+### Identifying the average number of contacts and contraints per particle
+### (globally or in the contact network)
 
 def Z_C(Dir):
     
@@ -493,6 +499,7 @@ def Z_C(Dir):
 
 
 #%% RIGIDITY PERSISTENCE
+### Time autocorrelation of particle rigidity
 
 def rigPers(Dir, SSi, outputVar):
     
@@ -578,6 +585,7 @@ def rigPers(Dir, SSi, outputVar):
 
 
 #%% NUMBER OF CONSTRAINTS PERSISTENCE
+### Time autocorrelation of 3 or 6 constraints
 
 def constPers(Dir, SSi, outputVar):
     
@@ -683,6 +691,7 @@ def constPers(Dir, SSi, outputVar):
 
 
 #%% MAX CLUSTER SIZE
+### Computing the maximum cluster size
 
 def maxClusterSize(Dir):
     
@@ -714,6 +723,7 @@ def maxClusterSize(Dir):
 
 
 #%% MAX CLUSTER SIZE TIME CORRELATION FUNCTION
+### Time autocorrelation of the maximum cluster size
 
 def maxClusterSize_corr(Dir, SSi, outputVar):
     
@@ -776,6 +786,8 @@ def maxClusterSize_corr(Dir, SSi, outputVar):
 
 
 #%% PAIR DISTRIBUTION FUNCTION
+### Computing both g(r) and g(r,theta)
+### The user needs to specify both dr and dtheta, as well as the type of particles to consider
 
 def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
     
@@ -951,6 +963,7 @@ def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
 
 
 #%% SOME CLUSTERS SNAPSHOTS
+### Plotting some rigid clusters snapshots
 
 def make_SomeClustersSnapshots(Dir, SSi, numSnapshots):
     
@@ -1103,6 +1116,7 @@ def make_SomeClustersSnapshots(Dir, SSi, numSnapshots):
 
 
 #%% SOME INTERACTIONS SNAPSHOTS
+### Plotting some interactions snapshots
 
 def make_SomeInteractionsSnapshots(Dir, SSi, numSnapshots):
     
@@ -1283,6 +1297,7 @@ def make_SomeInteractionsSnapshots(Dir, SSi, numSnapshots):
 
 
 #%% CLUSTERS MOVIE
+### Plotting the rigid clusters snapshots to generate a movie
 
 def make_ClustersMovie(Dir):
     
@@ -1431,6 +1446,7 @@ def make_ClustersMovie(Dir):
 
 
 #%% INTERACTIONS MOVIE
+### Plotting the interactions snapshots to generate a movie
 
 def make_InteractionsMovie(Dir):
     
@@ -1609,6 +1625,7 @@ def make_InteractionsMovie(Dir):
 
 
 #%% TRIANGULAR WALLS MOVIE
+### Experimental
 
 def make_TriangularWallsMovie(Dir, paramsFileName, shearRate):
     

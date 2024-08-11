@@ -1,22 +1,11 @@
-# Silke Henkes, 29.08.18:
-# Created Pebbles class to prepare and execute the pebble game for all situation
-# Detangled code parts, contains:
-# - Game set up, including adding frictional or other bonds
-# - Pebble game computation
-# - Rigid cluster computation
-# - Core game functions
-
-# Silke Henkes 11.07.2013: Accelerated version of pebble game and rigid cluster code
-#!/usr/bin/python
-
-# Needs a configuration to start with
 from Configuration_LFDEM import *
+import copy as cp
 import sys
+
 sys.setrecursionlimit(1500000)
 
 
-# Copy function as we need to make non-trivial copies of whole pebble configurations
-import copy as cp
+
 
 
 class Pebbles:
@@ -100,44 +89,11 @@ class Pebbles:
     def AddRandombonds(self):
         return 0
 
-    ############  Kuang's AddSomeContacts, need to be modified to be compatible with class structure
-#      def AddSomeContacts(self,conf,percentage):
-# new_ncon=int((1+0.01*percentage)*conf.ncon)
-# self.Iadded=[0]*new_ncon
-# self.Jadded=[0]*new_ncon
-# self.fullmobiadded=np.zeros(new_ncon)
-# self.Iadded[:conf.ncon]=conf.I
-# self.Jadded[:conf.ncon]=conf.J
-# self.fullmobiadded[:conf.ncon]=conf.fullmobi
-# fraction_double_bonds=float(np.sum(conf.fullmobi==0)/conf.ncon)
-# Num_add_d_bonds=int(fraction_double_bonds*percentage*conf.ncon)
 
-# I_base=[]
-# J_base=[]
-# for i in range(len(conf.x)-1):
-# 	for j in range(i+1,len(conf.x)):
-# 		if abs(conf.x[i]-conf.x[j])<=(conf.rad[i]+conf.rad[j]) and abs(conf.y[i]-conf.y[j])<=(conf.rad[i]+conf.rad[j]):
-# 			for k in range(len(conf.I)):
-# 				if conf.I[k]==i and conf.J[k]==j:
-# 					break
-# 				else:
-# 					if conf.I[k]==j and conf.J[k]==i:
-# 						break
-# 					else:
-# 						I_base.append(i)
-# 						J.base.append(j)
-# 						break
 
-# Order=random.shuffle(list(range(0, len(I_base))))
-# for i in range(new_ncon-conf.ncon):
-# 	self.Iadded[conf.ncon+i]=I_base[Order[i]]
-# 	self.Jadded[conf.ncon+i]=J_base[Order[i]]
-# 	if i>=Num_add_d_bonds :
-# 		self.fullmobiadded[conf.ncon+i]=1
 
-################conf.ncon, conf.fnor, conf.ftan, conf.fullmobi need to be updated.
 
-### ================================ The pebble game ==============================================
+    ### ================================ The pebble game ==============================================
 
     def play_game(self):
         # pebbles, defined on particles
@@ -177,10 +133,9 @@ class Pebbles:
         print(('Number of free pebbles: ' + str(self.freepeb)))
         print(('Number of failed contacts: ' + str(self.fail)))
 
-# ============================= Rigid clusters =======================================
-# Problem was the wrong percolation algorithm. Following Jacobs and Hendrickson, only one round is necessary
-# since by construction, every rigid site is found in the pebble search eventually (OR NOT?)
-# Following algorithm on p. 357-358
+    # ============================= Rigid clusters =======================================
+    # Problem was the wrong percolation algorithm. Following Jacobs and Hendrickson, only one round is necessary
+    # since by construction, every rigid site is found in the pebble search eventually
 
     def rigid_cluster(self):
         # initialize cluster index and list of lists for particle cluster labels
@@ -317,11 +272,11 @@ class Pebbles:
         # Note: Further rigid cluster analysis has been moved to Analysis class
         return self.cidx, clusterall, clusterallBonds, clusteridx, BigCluster
 
-#========================== The pebble game core functions ========================================
-#======= These are now generic to be compatible with any (m,n) game as defined above ==============
-#================================ DO NOT TOUCH !!! ================================================
-#
-# Checking neighbors for rigidity
+    #========================== The pebble game core functions ========================================
+    #======= These are now generic to be compatible with any (m,n) game as defined above ==============
+    #================================ DO NOT TOUCH !!! ================================================
+    #
+    # Checking neighbors for rigidity
 
     def check_neighbors(self, i, pebblescopy, marked, rigid):
         rig = False
@@ -347,8 +302,8 @@ class Pebbles:
                     rig = True
         return rig
 
-# based on rearrange pebbles
-# Mark particles either rigid or floppy
+    # based on rearrange pebbles
+    # Mark particles either rigid or floppy
 
     def mark_path(self, marked, rigid, path, i, marktype):
         if (path[i] == -1):
@@ -370,7 +325,8 @@ class Pebbles:
                     else:
                         print(('Marked particle ' + str(i) + ' ' + ' floppy'))
                 i = l
-# Close cousin to identify overconstrained regions
+                
+    # Close cousin to identify overconstrained regions
 
     def mark_path_over(self, marked, path, i):
         if (path[i] == -1):
@@ -381,11 +337,11 @@ class Pebbles:
                 marked[i] = True
                 i = l
 
-# Define the rigid cluster: Particles are added to cluster cidx if they are rigid
-# contacts are added if they are between two rigid sites (that includes the frictional double bonds)
-# Careful: there are cases where an overlapping cluster has been identified through starting from a bond
-# the game hasn't visited for some reason. Throw an error in that case, return to start
-# This has to be done through the bonds, clusters can have more than one label
+    # Define the rigid cluster: Particles are added to cluster cidx if they are rigid
+    # contacts are added if they are between two rigid sites (that includes the frictional double bonds)
+    # Careful: there are cases where an overlapping cluster has been identified through starting from a bond
+    # the game hasn't visited for some reason. Throw an error in that case, return to start
+    # This has to be done through the bonds, clusters can have more than one label
 
     def rig_path(self, marked, rigid, tentative):
         for i in np.nonzero(marked)[0]:
@@ -418,7 +374,7 @@ class Pebbles:
                            str(self.cidx)))
         return self.cidx
 
-# Close cousin to identify overconstrained regions
+    # Close cousin to identify overconstrained regions
 
     def over_path(self, marked):
         for i in np.nonzero(marked)[0]:
@@ -431,7 +387,7 @@ class Pebbles:
                 if (marked[u]):
                     self.Overcon[c] = True
 
-# Main pebble algorithm
+    # Main pebble algorithm
 
     def find_pebble(self, pbcopy, i, seen, path):
         seen[i] = True
@@ -453,7 +409,7 @@ class Pebbles:
                 k += 1
         return found
 
-# Find pebble in the presence of rigid and floppy sites
+    # Find pebble in the presence of rigid and floppy sites
 
     def find_pebble2(self, pbcopy, i, seen, path, marked, rigid):
         ## print 'looking for a pebble at vertex ' + str(i)
@@ -486,7 +442,7 @@ class Pebbles:
                     k += 1
         return found
 
-# Rearranging search paths after pebble is found
+    # Rearranging search paths after pebble is found
 
     def rearrange_pebbles(self, pbcopy, i, j, path):
         ## print 'entering rearrange pebbles; path of i is' + str(path[i])
@@ -526,7 +482,7 @@ class Pebbles:
                 else:
                     pbcopy[i, 2] = j
 
-# attempt adding an edge. The contact info is in pbcopy
+    # attempt adding an edge. The contact info is in pbcopy
 
     def enlarge_cover(self, pbcopy, i, j):
         seen = -1 * np.zeros((self.N, )) > 0
@@ -547,7 +503,7 @@ class Pebbles:
         ## print 'pebble search failed!'
         return 1  # failure
 
-# Cousin to mark overconstrained
+    # Cousin to mark overconstrained
 
     def enlarge_over(self, pbcopy, marked, i, j):
         seen = -1 * np.zeros((self.N, )) > 0

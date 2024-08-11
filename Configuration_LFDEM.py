@@ -1,33 +1,16 @@
-# Silke Henkes, 29.08.18:
-# Created Configuration class to read both experimental and simulation data
-# Detangled code parts, contains:
-# - Read-in for all circumstances
-# - Analysis functions which depend on particle positions only, called by Analysis and others
-
-# Silke Henkes 11.07.2013: Accelerated version of pebble game and rigid cluster code
-#!/usr/bin/python
-
-"""
-This code was modified by Mike van der Naald on 2/11/2021.
-The configuration class was modified to not read in text files for the data but instead have them be passed in
-as arguments to the class constructor.  This is nice for feeding in dense suspension configurations from LF_DEM.
-"""
-
-
 import sys
 import numpy as np
+
 sys.setrecursionlimit(1500000)
+
+
+
 
 
 class Configuration:
 
-    #=================== Create a new configruation ===============
-    # Current choices: either simulation or experimental through datatype. Parameters are either read (simulation) or passed to the configuration via optional arguments (experiment)
-    def __init__(self,numParticles,
-                 systemSize,
-                 strainRate,
-                 radii
-                 ):
+    # ========== Create a new configuration ==========
+    def __init__(self,numParticles, systemSize, strainRate, radii):
         self.addBoundary = False
         self.getParameters(numParticles,systemSize,radii)
         # Simulation data has periodic boundary conditions and also angles as output
@@ -42,8 +25,7 @@ class Configuration:
         self.height = 1.0
         self.width = 1.0
 
-
-    #======= Simulation parameter read-in =====================
+    # ========== Simulation parameter read-in ==========
     # use Parameter read-in as function called by the constructor
     def getParameters(self,numParticles,systemSize,radii):
         self.N = numParticles
@@ -52,22 +34,20 @@ class Configuration:
         self.Lx = self.L
         self.Ly = self.L
         self.rad = radii
-
-        #These parameters are not used in the RigidCluster calculation.  As far as I can tell, they're only used when
-        #you don't give the contact network to the code and the code has to calculate it.  Since LF_DEM returns this data
-        #we don't need to have the code calcualte it.
+        # These parameters are not used in the RigidCluster calculation. As far as I can tell, they're only used when
+        # you don't give the contact network to the code and the code has to calculate it. Since LF_DEM returns this data
+        # we don't need to have the code calcualte it.
         self.krep = 1
         self.mu = 1
         self.xi = 1
         self.phi = .5
 
-    #######========== Simulation data read-in ==================
+    # ========== Simulation data read-in ==========
     # snap is the label, and distSnapshot tells me how many time units they are apart (in actual time, not steps)
     def readSimdata(self,contactData,snap, distSnapshot0=100.0):
         self.distSnapshot = distSnapshot0
         self.strain = self.gammadot * (1.0 * snap) * self.distSnapshot
         #These other variables are not needed but we'll set them to zero now
-
         self.x = np.zeros(self.N)
         self.y = np.zeros(self.N)
         #These other variables are not needed but we'll set them to zero now
@@ -75,10 +55,6 @@ class Configuration:
         self.dx = np.zeros(self.N)
         self.dy = np.zeros(self.N)
         self.dalpha = np.zeros(self.N)
-        
-
-
-
         self.I = list(contactData[:, 0].astype(int))
         self.J = list(contactData[:, 1].astype(int))
         self.fullmobi = contactData[:, 2].astype(int)-2
@@ -88,12 +64,11 @@ class Configuration:
         self.fnor = np.zeros(np.shape(contactData)[0])
         self.ftan = np.zeros(np.shape(contactData)[0])
         del contactData
-
         self.x -= self.L * np.round(self.x / self.L)
         self.y -= self.L * np.round(self.y / self.L)
         self.ncon = len(self.I)
 
-    #### ======================== Boundary integration =======================================================
+    # ========== Boundary integration ==========
     def AddBoundaryContacts(self, threshold=20, Brad=20.0):
         self.addBoundary = True
         # Threshold to check if a particle is close enough to walls.
@@ -101,8 +76,7 @@ class Configuration:
         downidx = np.argmin(self.y)
         leftidx = np.argmin(self.x)
         rightidx = np.argmax(self.x)
-
-        # Boundary posiitons:
+        # Boundary positions:
         # coordinates of virtual boundary particles: in the middle, one Brad off from the edge of the outermost particle
         up = self.y[upidx]
         yup = up + self.rad[upidx]
@@ -112,15 +86,12 @@ class Configuration:
         xleft = left - self.rad[leftidx]
         right = self.x[rightidx]
         xright = right + self.rad[rightidx]
-
         # coordinates of virtual boundary particles: in the middle, one Brad off from the edge of the outermost particle
-        Boundaries = np.zeros(
-            (4, 3))  # Four boundary particles with their x,y and rad
+        Boundaries = np.zeros((4,3))  # Four boundary particles with their x,y and rad
         Boundaries[0, :] = [(left + right) * 0.5, yup + Brad, Brad]
         Boundaries[1, :] = [(left + right) * 0.5, ydown - Brad, Brad]
         Boundaries[2, :] = [xleft - Brad, (up + down) * 0.5, Brad]
         Boundaries[3, :] = [xright + Brad, (up + down) * 0.5, Brad]
-
         # Find the particles in contact with the boundary, and label correctly
         self.bindices = [self.N, self.N + 1, self.N + 2, self.N + 3]
         padd = []
@@ -137,7 +108,6 @@ class Configuration:
         pright = np.nonzero(np.abs(self.x + self.rad - xright) < threshold)[0]
         padd.extend(pright)
         labels.extend([3 for k in range(len(pright))])
-
         fullmobi_add = []
         fnor_add = []
         ftan_add = []
@@ -205,7 +175,6 @@ class Configuration:
         downidx = np.argmin(self.ynext)
         leftidx = np.argmin(self.xnext)
         rightidx = np.argmax(self.xnext)
-
         # Boundary posiitons:
         # coordinates of virtual boundary particles: in the middle, one Brad off from the edge of the outermost particle
         up = self.ynext[upidx]
@@ -233,7 +202,7 @@ class Configuration:
         self.dy = self.ynext - self.y
         self.Nnext += 4
 
-    #### ======================== Analysis helper functions	 =================================================
+    # ========== Analysis helper functions	 ==========
 
     # computes basic contact, force, torque, and stress statistics
     def getStressStat(self):
@@ -318,7 +287,7 @@ class Configuration:
 
         return zav, nm, pres, fxbal, fybal, torbal, mobin, mohist, sxx, syy, sxy, syx
 
-    #### =================== Computes the D2_min, amount of non-affine motion around a particle ==============
+    # ========== Computes the D2_min, amount of non-affine motion around a particle ==========
     def getD2min(self, threshold_rad):
         D2_min = np.zeros(len(self.x))
         for k in range(len(self.x)):
@@ -372,7 +341,7 @@ class Configuration:
 
         return D2_min
 
-    # ====== Experimental or simulation displacements, decomposed into normal, tangential and potentiallt rotational displecements
+    # ========== Experimental or simulation displacements, decomposed into normal, tangential and potentiallt rotational displecements ==========
     def Disp2Contacts(self, minThresh, debug=False):
         disp2n = np.zeros(self.ncon)
         disp2t = np.zeros(self.ncon)
@@ -406,7 +375,7 @@ class Configuration:
         else:
             return disp2n, disp2t, thresh
 
-    ##================ Finally, pure helper functions: positions of both ends of a contact ===============
+    # ========== Finally, pure helper functions: positions of both ends of a contact ==========
     # get the cleaned up, periodic boundary conditions sorted out positions corresponding to two ends of a contact.
     # Basic plotting helper function
     def getConPos(self, k):

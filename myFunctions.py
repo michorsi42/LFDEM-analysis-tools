@@ -789,6 +789,8 @@ def maxClusterSize_corr(Dir, SSi, outputVar):
 ### Computing both g(r) and g(r,theta)
 ### The user needs to specify both dr and dtheta, as well as the type of particles to consider
 
+### TO DO: FFT
+
 def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
     
     if partsTypePDF != 'all' and partsTypePDF != 'rig' and partsTypePDF != 'rigPrime':

@@ -863,7 +863,7 @@ def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
             sys.exit("ERROR: something's wrong with the reading of rigPrimeFile")
         del file, fileLines, line, counter, isNewTime, IDs
     
-    dtheta  *= np.pi / 180.
+    dtheta  *= np.pi / 180
     rmin     = np.min(a) + np.min(minGap)   # to allow overlapping
     rmax     = np.max([Lx,Lz]) / 2.
     thetamin = -np.pi
@@ -921,7 +921,7 @@ def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
             for indr, r in enumerate(rlin[0:-1]):
             
                 surf_couche = np.pi * dr * (dr + 2.*r)
-                surf_theta  = r * dr * dtheta
+                surf_theta  = surf_couche * dtheta / (2*np.pi)
                 
                 condr       = np.logical_and(dij>=r, dij<r+dr)
                 thetaij_r   = thetaij[condr]

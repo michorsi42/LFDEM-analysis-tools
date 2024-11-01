@@ -506,11 +506,15 @@ def rigPers(Dir, SSi, outputVar):
     baseName = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
     dataFile = Dir + 'data_' + baseName
     rigFile  = Dir + 'rig_'  + baseName
+    FrigFile = Dir + 'F_rig.txt'
     
     # this function requires myRigidClusters to be previously run
     # let's check if it has been run, let's do it if not
     if not os.path.exists(rigFile):
         myRigidClusters(Dir)
+        
+    F_rig      = np.loadtxt(FrigFile)
+    F_rig_mean = np.mean(F_rig[SSi:])
         
     t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
@@ -549,20 +553,19 @@ def rigPers(Dir, SSi, outputVar):
             rigPartsIDs_it = np.concatenate(rigPartsIDs_it)
         for ip in rigPartsIDs_it:
             isInCluster[it-SSi][ip] = True
-                
-    ntaus      = ndt-SSi
-    rigPers    = np.zeros(ntaus)
-    corrProd   = np.zeros((ntaus,NP))
-    uncorrProd = np.zeros((ntaus,NP))
+        
+    
+    
+    ntaus    = ndt-SSi
+    rigPers  = np.zeros(ntaus)
+    corrProd = np.zeros((ntaus,NP))
     for it1 in range(ntaus):
-        uncorrProd[it1] += isInCluster[it1]
         for it2 in range(it1,ntaus):
-            k            = it2 - it1
-            corrProd[k] += isInCluster[it1] * isInCluster[it2]
+            tau            = it2 - it1
+            corrProd[tau] += isInCluster[it1] * isInCluster[it2]
     for k in range(ntaus):
-        corrProd[k]   /= (ntaus-k)
-        uncorrProd[k] /= (ntaus-k)
-        rigPers[k]     = np.sum(corrProd[k] - uncorrProd[k]**2.)
+        corrProd[k] /= (ntaus-k)
+        rigPers[k]   = np.sum(corrProd[k]) - F_rig_mean**2.
         
     if outputVar == 't':
         delta   = t[1]-t[0]

@@ -513,9 +513,6 @@ def rigPers(Dir, SSi, outputVar):
     if not os.path.exists(rigFile):
         myRigidClusters(Dir)
         
-    F_rig      = np.loadtxt(FrigFile)
-    F_rig_mean = np.mean(F_rig[SSi:])
-        
     t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
@@ -524,6 +521,15 @@ def rigPers(Dir, SSi, outputVar):
     ndt = len(t)
         
     NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
+    
+    if outputVar == 't':
+        delta   = t[1]-t[0]
+        header  = 'Delta t       C'
+    elif outputVar == 'gamma':
+        delta   = gamma[1]-gamma[0]
+        header  = 'Delta gamma       C'
+    else:
+        sys.exit("ERROR: there is a problem with outputVar")
     
     with open(rigFile) as file:
         fileLines = file.readlines()[2*ndt+5:]
@@ -553,141 +559,24 @@ def rigPers(Dir, SSi, outputVar):
             rigPartsIDs_it = np.concatenate(rigPartsIDs_it)
         for ip in rigPartsIDs_it:
             isInCluster[it-SSi][ip] = True
-        
-    
     
     ntaus    = ndt-SSi
     rigPers  = np.zeros(ntaus)
-    corrProd = np.zeros((ntaus,NP))
-    for it1 in range(ntaus):
-        for it2 in range(it1,ntaus):
-            tau            = it2 - it1
-            corrProd[tau] += isInCluster[it1] * isInCluster[it2]
-    for k in range(ntaus):
-        corrProd[k] /= (ntaus-k)
-        rigPers[k]   = np.sum(corrProd[k]) - F_rig_mean**2.
-        
-    if outputVar == 't':
-        delta   = t[1]-t[0]
-        header  = 'Delta t       C'
-    elif outputVar == 'gamma':
-        delta   = gamma[1]-gamma[0]
-        header  = 'Delta gamma       C'
-    else:
-        sys.exit("ERROR: there is a problem with outputVar")
-        
+    corrProd = np.zeros((NP,ntaus))
+    for i in range(NP):   # particle i
+        for j in range(ntaus):   # lag j
+            av = np.mean(isInCluster[i][0:ntaus-j])
+            for k in range(0,ntaus-j):   # time k
+                corrProd[i][j] += (isInCluster[i][k]-av) * (isInCluster[i][k+j]-av) / (ntaus-j)
+    for j in range(ntaus):
+        rigPers[j] = np.mean(corrProd[:][j])
+    
     rigPersFile = open(Dir+"rigPers.txt", "w")
     rigPersFile.write(header + '\n')
     for k in range(ntaus):
         rigPersFile.write(str(round(delta*k,9)) + '      ' +
                           str(rigPers[k])       + '\n')
     rigPersFile.close()
-
-
-
-
-
-#%% NUMBER OF CONSTRAINTS PERSISTENCE
-### Time autocorrelation of 3 or 6 constraints
-
-def constPers(Dir, SSi, outputVar):
-    
-    baseName = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
-    dataFile = Dir + 'data_' + baseName
-    intFile  = Dir + 'int_'  + baseName
-    
-    NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
-    
-    t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
-        = np.loadtxt(dataFile, skiprows=37).transpose()
-        
-    ndt = len(t)
-    
-    with open(intFile) as file:
-        fileLines = file.readlines()[20:]
-    intData   = []
-    counter   = -1
-    isNewTime = False
-    for line in fileLines:
-        if "#" in line:
-            if not isNewTime:
-                intData.append([])
-                isNewTime  = True
-                counter   += 1
-        else:
-            intData[counter].append([float(item) for item in line.split()])
-            isNewTime = False
-    if len(intData) != ndt:
-        sys.exit("ERROR: something's wrong with the reading of intFile")
-    del file, fileLines, line, counter, isNewTime
-    
-    isItC3 = np.zeros((ndt-SSi,NP), dtype=bool)
-    isItC6 = np.zeros((ndt-SSi,NP), dtype=bool)
-    
-    for it in range(ndt):
-        if it >= SSi:
-            ip, jp, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, contState, dummy, dummy, dummy, dummy, dummy, dummy = np.reshape(intData[it], (len(intData[it]), 17)).T
-            ip              = np.array(ip,        dtype=int)
-            jp              = np.array(jp,        dtype=int)
-            contState       = np.array(contState, dtype=int)
-            stickContacts   = np.where(contState==2)[0]
-            slideContacts   = np.where(contState==3)[0]
-            numConstPerPart = np.zeros(NP, dtype=int)
-            for i in range(stickContacts.size):
-                numConstPerPart[ip[stickContacts[i]]] += 2
-                numConstPerPart[jp[stickContacts[i]]] += 2
-            for i in range(slideContacts.size):
-                numConstPerPart[ip[slideContacts[i]]] += 1
-                numConstPerPart[jp[slideContacts[i]]] += 1
-            isItC3[it-SSi] = numConstPerPart >= 2
-            isItC6[it-SSi] = numConstPerPart >= 3
-    
-    ntaus        = ndt-SSi
-    contPersC3   = np.zeros(ntaus)
-    contPersC6   = np.zeros(ntaus)
-    corrProdC3   = np.zeros((ntaus,NP))
-    corrProdC6   = np.zeros((ntaus,NP))
-    uncorrProdC3 = np.zeros((ntaus,NP))
-    uncorrProdC6 = np.zeros((ntaus,NP))
-    for it1 in range(ntaus):
-        uncorrProdC3[it1] += isItC3[it1]
-        uncorrProdC6[it1] += isItC6[it1]
-        for it2 in range(it1,ntaus):
-            k              = it2 - it1
-            corrProdC3[k] += isItC3[it1] * isItC3[it2]
-            corrProdC6[k] += isItC6[it1] * isItC6[it2]
-    for k in range(ntaus):
-        corrProdC3[k]   /= (ntaus-k)
-        corrProdC6[k]   /= (ntaus-k)
-        uncorrProdC3[k] /= (ntaus-k)
-        uncorrProdC6[k] /= (ntaus-k)
-        contPersC3[k]    = np.sum(corrProdC3[k] - uncorrProdC3[k]**2.)
-        contPersC6[k]    = np.sum(corrProdC6[k] - uncorrProdC6[k]**2.)
-    
-    if outputVar == 't':
-        delta   = t[1]-t[0]
-        header  = 'Delta t       C'
-    elif outputVar == 'gamma':
-        delta   = gamma[1]-gamma[0]
-        header  = 'Delta gamma       C'
-    else:
-        sys.exit("ERROR: there is a problem with outputVar")
-        
-    contPersC3File = open(Dir+"contC3Pers.txt", "w")
-    contPersC3File.write(header + '\n')
-    for k in range(ntaus):
-        contPersC3File.write(str(round(delta*k,9)) + '      ' +
-                             str(contPersC3[k])    + '\n')
-    contPersC3File.close()
-    
-    contPersC6File = open(Dir+"contC6Pers.txt", "w")
-    contPersC6File.write(header + '\n')
-    for k in range(ntaus):
-        contPersC6File.write(str(round(delta*k,9)) + '      ' +
-                             str(contPersC6[k])    + '\n')
-    contPersC6File.close()
 
 
 
@@ -725,69 +614,6 @@ def maxClusterSize(Dir):
 
 
 
-#%% MAX CLUSTER SIZE TIME CORRELATION FUNCTION
-### Time autocorrelation of the maximum cluster size
-
-def maxClusterSize_corr(Dir, SSi, outputVar):
-    
-    baseName = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
-    dataFile = Dir + 'data_' + baseName
-    nMaxFile = Dir + 'maxClusterSize.txt'
-    
-    # this function requires maxClusterSize to be previously run
-    # let's check if it has been run, let's do it if not
-    if not os.path.exists(nMaxFile):
-        maxClusterSize(Dir, SSi)
-        
-    t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
-        = np.loadtxt(dataFile, skiprows=37).transpose()
-        
-    ndt = len(t)
-        
-    NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
-    
-    maxClustersSize = np.loadtxt(nMaxFile).transpose()
-    maxClustersSize = maxClustersSize[SSi:]
-        
-    ntaus       = ndt-SSi
-    nMaxPers    = np.zeros(ntaus)
-    corrProd    = np.zeros((ntaus,NP))
-    uncorrProd1 = np.zeros((ntaus,NP))
-    uncorrProd2 = np.zeros((ntaus,NP))
-    for it1 in range(ntaus):
-        for it2 in range(it1,ntaus):
-            k               = it2 - it1
-            corrProd[k]    += maxClustersSize[it1] * maxClustersSize[it2]
-            uncorrProd1[k] += maxClustersSize[it1]
-            uncorrProd2[k] += maxClustersSize[it2]
-    for k in range(ntaus):
-        corrProd[k]    /= (ntaus-k)
-        uncorrProd1[k] /= (ntaus-k)
-        uncorrProd2[k] /= (ntaus-k)
-        nMaxPers[k]     = np.sum(corrProd[k] - uncorrProd1[k]*uncorrProd2[k])
-        
-    if outputVar == 't':
-        delta   = t[1]-t[0]
-        header  = 'Delta t       C'
-    elif outputVar == 'gamma':
-        delta   = gamma[1]-gamma[0]
-        header  = 'Delta gamma       C'
-    else:
-        sys.exit("ERROR: there is a problem with outputVar")
-        
-    nMaxPersFile = open(Dir+"maxClusterSize_corr.txt", "w")
-    nMaxPersFile.write(header + '\n')
-    for k in range(ntaus):
-        nMaxPersFile.write(str(round(delta*k,9)) + '      ' +
-                           str(nMaxPers[k])      + '\n')
-    nMaxPersFile.close()
-
-
-
-
-
 #%% PAIR DISTRIBUTION FUNCTION
 ### Computing both g(r) and g(r,theta)
 ### The user needs to specify both dr and dtheta, as well as the type of particles to consider
@@ -807,9 +633,9 @@ def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
     
     NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
 
-    t,     gamma, gammapt, dummy,  dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy,   minGap, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy,   dummy,  dummy, dummy, dummy, dummy, dummy, dummy  \
+    t,     gamma, dummy, dummy,  dummy, dummy, dummy, dummy, dummy, dummy, \
+    dummy, dummy, dummy, minGap, dummy, dummy, dummy, dummy, dummy, dummy, \
+    dummy, dummy, dummy, dummy,  dummy, dummy, dummy, dummy, dummy, dummy  \
         = np.loadtxt(dataFile, skiprows=37).transpose()
         
     SSi = np.where(gamma[1:]>=1)[0][0]
@@ -907,9 +733,9 @@ def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
             dzij = zmat.transpose() - zmat
             
             # z-periodity (Lees Edwards)
-            dxij[dzij>Lz/2.]  -= gammapt[it] * Lz
-            dzij[dzij>Lz/2.]  -= Lz
-            dxij[dzij<-Lz/2.] += gammapt[it] * Lz
+            dxij[dzij> Lz/2.] -= np.modf(gamma[it])[0] * Lz
+            dzij[dzij> Lz/2.] -= Lz
+            dxij[dzij<-Lz/2.] += np.modf(gamma[it])[0] * Lz
             dzij[dzij<-Lz/2.] += Lz
             
             # x-periodicity
@@ -1629,90 +1455,3 @@ def make_InteractionsMovie(Dir):
 
 
 
-#%% TRIANGULAR WALLS MOVIE
-### Experimental
-
-def make_TriangularWallsMovie(Dir, paramsFileName, shearRate):
-    
-    plt.close('all')
-    plt.rcParams.update({
-      "figure.max_open_warning": 0,
-      "text.usetex": True,
-      "figure.autolayout": True,
-      "font.family": "STIXGeneral",
-      "mathtext.fontset": "stix",
-      "font.size":          10,
-      "xtick.labelsize":    10,
-      "ytick.labelsize":    10,
-      "patch.linewidth":    .2,
-      "lines.markersize":   5,
-      "hatch.linewidth":    .2,
-      'savefig.pad_inches': .01,
-      'savefig.format':     'png',
-      'savefig.bbox':       'tight',
-      'savefig.dpi':         200
-    })
-    plt.rcParams['text.latex.preamble']= r"\usepackage{amsmath}"
-    
-    matplotlib.use('Agg')
-    
-    baseName       = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
-    configFileName = Dir + baseName.removesuffix('_'+paramsFileName+'_rate'+shearRate+'h_shear.dat') + '.dat'
-    dataFile       = Dir + 'data_' + baseName
-    parFile        = Dir + 'par_'  + baseName
-    
-    np1            = int(np.genfromtxt(configFileName, comments=None, skip_header=1, max_rows=1)[1])
-    np2            = int(np.genfromtxt(configFileName, comments=None, skip_header=1, max_rows=1)[2])
-
-    VF             =     np.genfromtxt(configFileName, comments=None, skip_header=1, max_rows=1)[3]
-
-    Lx             =     np.genfromtxt(configFileName, comments=None, skip_header=1, max_rows=1)[4]
-    Lz             =     np.genfromtxt(configFileName, comments=None, skip_header=1, max_rows=1)[6]
-
-    np_wall1       = int(np.genfromtxt(configFileName, comments=None, skip_header=1, max_rows=1)[7])
-    np_wall2       = int(np.genfromtxt(configFileName, comments=None, skip_header=1, max_rows=1)[8])
-
-    NP             = np1 + np2
-
-    t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
-        = np.loadtxt(dataFile, skiprows=40).transpose()
-        
-    ndt = len(t)
-        
-    dummy, dummy, dummy, a = np.loadtxt(configFileName, skiprows=2).transpose()
-        
-    dummy, dummy, rx, dummy, rz, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy = np.loadtxt(parFile).reshape(ndt,NP+np_wall1+np_wall2,15).transpose(2,0,1)
-    
-    a2    = np.max(a)
-    newLx = Lx + 2*a2
-    newLz = Lz + 2*a2
-    
-    if not os.path.exists(Dir+"snapshots"):
-        os.mkdir(Dir+"snapshots")
-        
-    fig, ax = plt.subplots(1,1, figsize=(5,5))
-    
-    print("   >> Generating snapshots")
-    
-    for it in range(ndt):
-        
-        print("    - time step " + str(it+1) + " out of " + str(ndt))
-        
-        title = r"$\dot{\gamma} =\ $" + shearRate + r"$\qquad N =\ $" + str(NP) + r"$\qquad \phi =\ $" + str(VF) + r"$\qquad \gamma =\ $" + '{:.2f}'.format(gamma[it])
-        ax.clear()
-        ax.set_title(title)
-        for ip in range(NP):
-            circle = plt.Circle((rx[it][ip],rz[it][ip]), a[ip], facecolor='w', edgecolor='k', zorder=1)
-            ax.add_artist(circle)
-        for ip in range(NP,NP+np_wall1+np_wall2):
-            circle = plt.Circle((rx[it][ip],rz[it][ip]), a[ip], facecolor='b', edgecolor='k', zorder=2)
-            ax.add_artist(circle)
-        ax.set_xlim([-(newLx/2+0.2),(newLx/2+0.2)])
-        ax.set_ylim([-(newLz/2+0.2),(newLz/2+0.2)])
-        ax.axis('off')
-        ax.set_aspect('equal')
-        fig.savefig(Dir+"snapshots/"+str(it+1))
-        
-    plt.close('all')

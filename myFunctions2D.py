@@ -566,11 +566,17 @@ def KC_parts(Dir):
     del file, fileLines, line, counter, isNewTime
     
     F_C3            = []
+    F_C4            = []
+    F_C5            = []
     F_K2            = []
     F_K3            = []
     F_K4            = []
     C3Clusters      = []
     C3ClustersSizes = []
+    C4Clusters      = []
+    C4ClustersSizes = []
+    C5Clusters      = []
+    C5ClustersSizes = []
     K2Clusters      = []
     K2ClustersSizes = []
     K3Clusters      = []
@@ -608,12 +614,17 @@ def KC_parts(Dir):
             numFrictContactsPerPart[jp[frictContacts[i]]] += 1
         
         C3PartsIDs = np.where(numConstraintsPerPart>=3)[0]
+        C4PartsIDs = np.where(numConstraintsPerPart>=4)[0]
+        C5PartsIDs = np.where(numConstraintsPerPart>=5)[0]
         
         K2PartsIDs = np.where(numFrictContactsPerPart>=2)[0]
         K3PartsIDs = np.where(numFrictContactsPerPart>=3)[0]
         K4PartsIDs = np.where(numFrictContactsPerPart>=4)[0]
         
         F_C3.append(len(C3PartsIDs))
+        F_C4.append(len(C4PartsIDs))
+        F_C5.append(len(C5PartsIDs))
+        
         F_K2.append(len(K2PartsIDs))
         F_K3.append(len(K3PartsIDs))
         F_K4.append(len(K4PartsIDs))
@@ -659,6 +670,90 @@ def KC_parts(Dir):
             sys.exit("ERROR: something's wrong with C3Clusters_it")
         C3Clusters.append(C3Clusters_it)
         C3ClustersSizes.append([len(C3Clusters_it[i]) for i in range(len(C3Clusters_it))])
+        
+        # C4 clusters
+        C4Clusters_it = []
+        for i in frictContacts:
+            if ip[i] in C4PartsIDs and jp[i] not in C4PartsIDs:
+                ip_already_in_C4_cluster = False
+                for j in range(len(C4Clusters_it)):
+                    if ip[i] in C4Clusters_it[j]:
+                        ip_already_in_C4_cluster = True
+                        break
+                if not ip_already_in_C4_cluster:
+                    C4Clusters_it.append([ip[i]])
+            elif ip[i] not in C4PartsIDs and jp[i] in C4PartsIDs:
+                jp_already_in_C4_cluster = False
+                for j in range(len(C4Clusters_it)):
+                    if jp[i] in C4Clusters_it[j]:
+                        jp_already_in_C4_cluster = True
+                        break
+                if not jp_already_in_C4_cluster:
+                    C4Clusters_it.append([jp[i]])
+            elif ip[i] in C4PartsIDs and jp[i] in C4PartsIDs:
+                ip_already_in_C4_cluster = False
+                jp_already_in_C4_cluster = False
+                for j in range(len(C4Clusters_it)):
+                    if ip[i] in C4Clusters_it[j] and jp[i] not in C4Clusters_it[j]:
+                        ip_already_in_C4_cluster = True
+                        jp_already_in_C4_cluster = True
+                        C4Clusters_it[j].append(jp[i])
+                    elif ip[i] not in C4Clusters_it[j] and jp[i] in C4Clusters_it[j]:
+                        ip_already_in_C4_cluster = True
+                        jp_already_in_C4_cluster = True
+                        C4Clusters_it[j].append(ip[i])
+                if not ip_already_in_C4_cluster and not jp_already_in_C4_cluster:
+                    C4Clusters_it.append([ip[i], jp[i]])
+        C4Clusters_it = list(merge_common(C4Clusters_it))
+        if len(C4Clusters_it) > 0:
+            if len(np.concatenate(C4Clusters_it)) != len(C4PartsIDs):
+                sys.exit("ERROR: something's wrong with C4Clusters_it")
+        elif len(C4Clusters_it) == 0 and len(C4PartsIDs) != 0:
+            sys.exit("ERROR: something's wrong with C4Clusters_it")
+        C4Clusters.append(C4Clusters_it)
+        C4ClustersSizes.append([len(C4Clusters_it[i]) for i in range(len(C4Clusters_it))])
+        
+        # C5 clusters
+        C5Clusters_it = []
+        for i in frictContacts:
+            if ip[i] in C5PartsIDs and jp[i] not in C5PartsIDs:
+                ip_already_in_C5_cluster = False
+                for j in range(len(C5Clusters_it)):
+                    if ip[i] in C5Clusters_it[j]:
+                        ip_already_in_C5_cluster = True
+                        break
+                if not ip_already_in_C5_cluster:
+                    C5Clusters_it.append([ip[i]])
+            elif ip[i] not in C5PartsIDs and jp[i] in C5PartsIDs:
+                jp_already_in_C5_cluster = False
+                for j in range(len(C5Clusters_it)):
+                    if jp[i] in C5Clusters_it[j]:
+                        jp_already_in_C5_cluster = True
+                        break
+                if not jp_already_in_C5_cluster:
+                    C5Clusters_it.append([jp[i]])
+            elif ip[i] in C5PartsIDs and jp[i] in C5PartsIDs:
+                ip_already_in_C5_cluster = False
+                jp_already_in_C5_cluster = False
+                for j in range(len(C5Clusters_it)):
+                    if ip[i] in C5Clusters_it[j] and jp[i] not in C5Clusters_it[j]:
+                        ip_already_in_C5_cluster = True
+                        jp_already_in_C5_cluster = True
+                        C5Clusters_it[j].append(jp[i])
+                    elif ip[i] not in C5Clusters_it[j] and jp[i] in C5Clusters_it[j]:
+                        ip_already_in_C5_cluster = True
+                        jp_already_in_C5_cluster = True
+                        C5Clusters_it[j].append(ip[i])
+                if not ip_already_in_C5_cluster and not jp_already_in_C5_cluster:
+                    C5Clusters_it.append([ip[i], jp[i]])
+        C5Clusters_it = list(merge_common(C5Clusters_it))
+        if len(C5Clusters_it) > 0:
+            if len(np.concatenate(C5Clusters_it)) != len(C5PartsIDs):
+                sys.exit("ERROR: something's wrong with C5Clusters_it")
+        elif len(C5Clusters_it) == 0 and len(C5PartsIDs) != 0:
+            sys.exit("ERROR: something's wrong with C5Clusters_it")
+        C5Clusters.append(C5Clusters_it)
+        C5ClustersSizes.append([len(C5Clusters_it[i]) for i in range(len(C5Clusters_it))])
         
         # K2 clusters
         K2Clusters_it = []
@@ -787,13 +882,11 @@ def KC_parts(Dir):
         K4ClustersSizes.append([len(K4Clusters_it[i]) for i in range(len(K4Clusters_it))])
     
     # C3 files
-    
     FC3File = open(Dir+"F_C3.txt", "w")
     FC3File.write("t                F_C3" + '\n')
     for it in range(ndt):
         FC3File.write('{:.4f}'.format(t[it]) + '      ' + str(F_C3[it])  + '\n')
     FC3File.close()
-    
     C3File = open(Dir+"C3_clusters.txt", "w")
     C3File.write("#C>=3 Clusters Sizes" + '\n')
     for it in range(ndt):
@@ -819,14 +912,74 @@ def KC_parts(Dir):
                 C3File.write("\n")
     C3File.close()
     
-    # K2 files
+    # C4 files
+    FC4File = open(Dir+"F_C4.txt", "w")
+    FC4File.write("t                F_C4" + '\n')
+    for it in range(ndt):
+        FC4File.write('{:.4f}'.format(t[it]) + '      ' + str(F_C4[it])  + '\n')
+    FC4File.close()
+    C4File = open(Dir+"C4_clusters.txt", "w")
+    C4File.write("#C>=3 Clusters Sizes" + '\n')
+    for it in range(ndt):
+        if len(C4ClustersSizes[it]) == 0:
+            C4File.write("0   \n")
+        else:
+            for i in range(len(C4ClustersSizes[it])):
+                C4File.write(str(C4ClustersSizes[it][i]) + '   ')
+            C4File.write("\n")
+    C4File.write("\n")
+    C4File.write("#C>=3 Clusters IDs" + '\n')
+    for it in range(ndt):
+        C4File.write('#snapshot = ' + str(it) + '\n')
+        if len(C4ClustersSizes[it]) == 0:
+            C4File.write("0\n")
+        else:
+            for i in range(len(C4Clusters[it])):
+                for j in range(len(C4Clusters[it][i])):
+                    if j < len(C4Clusters[it][i])-1:
+                        C4File.write(str(C4Clusters[it][i][j]) + ',')
+                    else:
+                        C4File.write(str(C4Clusters[it][i][j]))
+                C4File.write("\n")
+    C4File.close()
     
+    # C5 files
+    FC5File = open(Dir+"F_C5.txt", "w")
+    FC5File.write("t                F_C5" + '\n')
+    for it in range(ndt):
+        FC5File.write('{:.4f}'.format(t[it]) + '      ' + str(F_C5[it])  + '\n')
+    FC5File.close()
+    C5File = open(Dir+"C5_clusters.txt", "w")
+    C5File.write("#C>=3 Clusters Sizes" + '\n')
+    for it in range(ndt):
+        if len(C5ClustersSizes[it]) == 0:
+            C5File.write("0   \n")
+        else:
+            for i in range(len(C5ClustersSizes[it])):
+                C5File.write(str(C5ClustersSizes[it][i]) + '   ')
+            C5File.write("\n")
+    C5File.write("\n")
+    C5File.write("#C>=3 Clusters IDs" + '\n')
+    for it in range(ndt):
+        C5File.write('#snapshot = ' + str(it) + '\n')
+        if len(C5ClustersSizes[it]) == 0:
+            C5File.write("0\n")
+        else:
+            for i in range(len(C5Clusters[it])):
+                for j in range(len(C5Clusters[it][i])):
+                    if j < len(C5Clusters[it][i])-1:
+                        C5File.write(str(C5Clusters[it][i][j]) + ',')
+                    else:
+                        C5File.write(str(C5Clusters[it][i][j]))
+                C5File.write("\n")
+    C5File.close()
+    
+    # K2 files
     FK2File = open(Dir+"F_K2.txt", "w")
     FK2File.write("t                F_K2" + '\n')
     for it in range(ndt):
         FK2File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K2[it])  + '\n')
     FK2File.close()
-    
     K2File = open(Dir+"K2_clusters.txt", "w")
     K2File.write("#C>=3 Clusters Sizes" + '\n')
     for it in range(ndt):
@@ -853,13 +1006,11 @@ def KC_parts(Dir):
     K2File.close()
     
     # K3 files
-    
     FK3File = open(Dir+"F_K3.txt", "w")
     FK3File.write("t                F_K3" + '\n')
     for it in range(ndt):
         FK3File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K3[it])  + '\n')
     FK3File.close()
-    
     K3File = open(Dir+"K3_clusters.txt", "w")
     K3File.write("#C>=3 Clusters Sizes" + '\n')
     for it in range(ndt):
@@ -886,13 +1037,11 @@ def KC_parts(Dir):
     K3File.close()
     
     # K4 files
-    
     FK4File = open(Dir+"F_K4.txt", "w")
     FK4File.write("t                F_K4" + '\n')
     for it in range(ndt):
         FK4File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K4[it])  + '\n')
     FK4File.close()
-    
     K4File = open(Dir+"K4_clusters.txt", "w")
     K4File.write("#C>=3 Clusters Sizes" + '\n')
     for it in range(ndt):

@@ -326,85 +326,116 @@ def cluster_size_distribution(Dir, SSi):
 
 
 
-#%% C>=n PARTICLES
-### Identifying the particles with more than 3 or 6 constraints
+#%% MAX CLUSTER SIZE
+### Computing the maximum cluster size
 
-def C_parts_IDs(Dir):
-
+def maxClusterSize(Dir):
+    
     baseName = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
     dataFile = Dir + 'data_' + baseName
-    intFile  = Dir + 'int_'  + baseName
+    rigFile  = Dir + 'rig_'  + baseName
     
-    NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
-    
-    t,     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
+    # this function requires myRigidClusters to be previously run
+    # let's check if it has been run, let's do it if not
+    if not os.path.exists(rigFile):
+        myRigidClusters(Dir)
+        
+    t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
         = np.loadtxt(dataFile, skiprows=37).transpose()
         
     ndt = len(t)
         
-    with open(intFile) as file:
-        fileLines = file.readlines()[20:]
-    intData   = []
-    counter   = -1
-    isNewTime = False
+    maxClustersSize = [np.max([int(x) for x in np.frombuffer(np.loadtxt(rigFile, skiprows=it+1, max_rows=1))]) for it in range(ndt)]
+        
+    nMaxFile = open(Dir+"maxClusterSize.txt", "w")
+    for k in range(ndt):
+        nMaxFile.write(str(maxClustersSize[k]) + '\n')
+    nMaxFile.close()
+
+
+
+
+
+#%% RIGIDITY PERSISTENCE
+### Time autocorrelation of particle rigidity
+
+def rigPers(Dir, SSi, outputVar):
+    
+    baseName = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
+    dataFile = Dir + 'data_' + baseName
+    rigFile  = Dir + 'rig_'  + baseName
+    
+    # this function requires myRigidClusters to be previously run
+    # let's check if it has been run, let's do it if not
+    if not os.path.exists(rigFile):
+        myRigidClusters(Dir)
+        
+    t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
+    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
+    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
+        = np.loadtxt(dataFile, skiprows=37).transpose()
+    
+    ndt = len(t)
+        
+    NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
+    
+    if outputVar == 't':
+        delta   = t[1]-t[0]
+        header  = 'Delta t       C'
+    elif outputVar == 'gamma':
+        delta   = gamma[1]-gamma[0]
+        header  = 'Delta gamma       C'
+    else:
+        sys.exit("ERROR: there is a problem with outputVar")
+    
+    with open(rigFile) as file:
+        fileLines = file.readlines()[2*ndt+5:]
+    rigPartsIDs = []
+    counter     = -1
+    isNewTime   = False
     for line in fileLines:
         if "#" in line:
             if not isNewTime:
-                intData.append([])
+                rigPartsIDs.append([])
                 isNewTime  = True
                 counter   += 1
         else:
-            intData[counter].append([float(item) for item in line.split()])
+            IDs = np.unique([int(item) for item in line.split(",")])
+            if len(IDs) == 1 and IDs == np.array([0]): IDs = np.array([])
+            rigPartsIDs[counter].append(IDs)
             isNewTime = False
-    if len(intData) != ndt:
-        sys.exit("ERROR: something's wrong with the reading of intFile")
-    del file, fileLines, line, counter, isNewTime
+    if len(rigPartsIDs) != ndt:
+        sys.exit("ERROR: something's wrong with the reading of rigFile")
+    del file, fileLines, line, counter, isNewTime, IDs
     
-    C3PartsIDs = []
-    C6PartsIDs = []
+    isInCluster = np.zeros((ndt-SSi,NP), dtype=bool)
     
-    for it in range(ndt):
-        
-        ip, jp, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, contState, dummy, dummy, dummy, dummy, dummy, dummy = np.reshape(intData[it], (len(intData[it]), 17)).T
-        
-        ip            = np.array(ip,        dtype=int)
-        jp            = np.array(jp,        dtype=int)
-        contState     = np.array(contState, dtype=int)
-        stickContacts = np.where(contState==2)[0]
-        slideContacts = np.where(contState==3)[0]
-        
-        numConstPerPart = np.zeros(NP, dtype=int)
-        for i in range(stickContacts.size):
-            numConstPerPart[ip[stickContacts[i]]] += 2
-            numConstPerPart[jp[stickContacts[i]]] += 2
-        for i in range(slideContacts.size):
-            numConstPerPart[ip[slideContacts[i]]] += 1
-            numConstPerPart[jp[slideContacts[i]]] += 1
-        
-        C3PartsIDs.append(np.where(numConstPerPart>=3)[0])
-        C6PartsIDs.append(np.where(numConstPerPart>=6)[0])
-        
-    C3PartsIDsFile = open(Dir+"C3PartsIDs.txt", "w")
-    for it in range(ndt):
-        if len(C3PartsIDs[it]) == 0:
-            C3PartsIDsFile.write("none")
-        else:
-            for ip in C3PartsIDs[it]:
-                C3PartsIDsFile.write(str(ip) + "   ")
-        C3PartsIDsFile.write('\n')
-    C3PartsIDsFile.close()
+    for it in range(SSi,ndt):
+        rigPartsIDs_it = rigPartsIDs[it]
+        if len(rigPartsIDs_it) > 0:
+            rigPartsIDs_it = np.concatenate(rigPartsIDs_it)
+        for ip in rigPartsIDs_it:
+            isInCluster[it-SSi][ip] = True
     
-    C6PartsIDsFile = open(Dir+"C6PartsIDs.txt", "w")
-    for it in range(ndt):
-        if len(C6PartsIDs[it]) == 0:
-            C6PartsIDsFile.write("none")
-        else:
-            for ip in C6PartsIDs[it]:
-                C6PartsIDsFile.write(str(ip) + "   ")
-        C6PartsIDsFile.write('\n')
-    C6PartsIDsFile.close()
+    ntaus    = ndt-SSi
+    rigPers  = np.zeros(ntaus)
+    corrProd = np.zeros((NP,ntaus))
+    for i in range(NP):   # particle i
+        for j in range(ntaus):   # lag j
+            av = np.mean(isInCluster[i][0:ntaus-j])
+            for k in range(0,ntaus-j):   # time k
+                corrProd[i][j] += (isInCluster[i][k]-av) * (isInCluster[i][k+j]-av) / (ntaus-j)
+    for j in range(ntaus):
+        rigPers[j] = np.mean(corrProd[:][j])
+    
+    rigPersFile = open(Dir+"rigPers.txt", "w")
+    rigPersFile.write(header + '\n')
+    for k in range(ntaus):
+        rigPersFile.write(str(round(delta*k,9)) + '      ' +
+                          str(rigPers[k])       + '\n')
+    rigPersFile.close()
 
 
 
@@ -498,117 +529,394 @@ def Z_C(Dir):
 
 
 
-#%% RIGIDITY PERSISTENCE
-### Time autocorrelation of particle rigidity
+#%% K>=n & C>=n
+### Identifying the particles with at least 2,3,4 contacts and particles with at least 3 constraints
 
-def rigPers(Dir, SSi, outputVar):
-    
+def KC_parts(Dir):
+
     baseName = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
     dataFile = Dir + 'data_' + baseName
-    rigFile  = Dir + 'rig_'  + baseName
-    FrigFile = Dir + 'F_rig.txt'
+    intFile  = Dir + 'int_'  + baseName
     
-    # this function requires myRigidClusters to be previously run
-    # let's check if it has been run, let's do it if not
-    if not os.path.exists(rigFile):
-        myRigidClusters(Dir)
-        
-    t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
+    NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
+    
+    t,     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
         = np.loadtxt(dataFile, skiprows=37).transpose()
-    
+        
     ndt = len(t)
         
-    NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
-    
-    if outputVar == 't':
-        delta   = t[1]-t[0]
-        header  = 'Delta t       C'
-    elif outputVar == 'gamma':
-        delta   = gamma[1]-gamma[0]
-        header  = 'Delta gamma       C'
-    else:
-        sys.exit("ERROR: there is a problem with outputVar")
-    
-    with open(rigFile) as file:
-        fileLines = file.readlines()[2*ndt+5:]
-    rigPartsIDs = []
-    counter     = -1
-    isNewTime   = False
+    with open(intFile) as file:
+        fileLines = file.readlines()[20:]
+    intData   = []
+    counter   = -1
+    isNewTime = False
     for line in fileLines:
         if "#" in line:
             if not isNewTime:
-                rigPartsIDs.append([])
+                intData.append([])
                 isNewTime  = True
                 counter   += 1
         else:
-            IDs = np.unique([int(item) for item in line.split(",")])
-            if len(IDs) == 1 and IDs == np.array([0]): IDs = np.array([])
-            rigPartsIDs[counter].append(IDs)
+            intData[counter].append([float(item) for item in line.split()])
             isNewTime = False
-    if len(rigPartsIDs) != ndt:
-        sys.exit("ERROR: something's wrong with the reading of rigFile")
-    del file, fileLines, line, counter, isNewTime, IDs
+    if len(intData) != ndt:
+        sys.exit("ERROR: something's wrong with the reading of intFile")
+    del file, fileLines, line, counter, isNewTime
     
-    isInCluster = np.zeros((ndt-SSi,NP), dtype=bool)
+    F_C3            = []
+    F_K2            = []
+    F_K3            = []
+    F_K4            = []
+    C3Clusters      = []
+    C3ClustersSizes = []
+    K2Clusters      = []
+    K2ClustersSizes = []
+    K3Clusters      = []
+    K3ClustersSizes = []
+    K4Clusters      = []
+    K4ClustersSizes = []
     
-    for it in range(SSi,ndt):
-        rigPartsIDs_it = rigPartsIDs[it]
-        if len(rigPartsIDs_it) > 0:
-            rigPartsIDs_it = np.concatenate(rigPartsIDs_it)
-        for ip in rigPartsIDs_it:
-            isInCluster[it-SSi][ip] = True
-    
-    ntaus    = ndt-SSi
-    rigPers  = np.zeros(ntaus)
-    corrProd = np.zeros((NP,ntaus))
-    for i in range(NP):   # particle i
-        for j in range(ntaus):   # lag j
-            av = np.mean(isInCluster[i][0:ntaus-j])
-            for k in range(0,ntaus-j):   # time k
-                corrProd[i][j] += (isInCluster[i][k]-av) * (isInCluster[i][k+j]-av) / (ntaus-j)
-    for j in range(ntaus):
-        rigPers[j] = np.mean(corrProd[:][j])
-    
-    rigPersFile = open(Dir+"rigPers.txt", "w")
-    rigPersFile.write(header + '\n')
-    for k in range(ntaus):
-        rigPersFile.write(str(round(delta*k,9)) + '      ' +
-                          str(rigPers[k])       + '\n')
-    rigPersFile.close()
-
-
-
-
-
-#%% MAX CLUSTER SIZE
-### Computing the maximum cluster size
-
-def maxClusterSize(Dir):
-    
-    baseName = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
-    dataFile = Dir + 'data_' + baseName
-    rigFile  = Dir + 'rig_'  + baseName
-    
-    # this function requires myRigidClusters to be previously run
-    # let's check if it has been run, let's do it if not
-    if not os.path.exists(rigFile):
-        myRigidClusters(Dir)
+    for it in range(ndt):
         
-    t,     gamma, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
-    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
-        = np.loadtxt(dataFile, skiprows=37).transpose()
+        ip, jp, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, contState, dummy, dummy, dummy, dummy, dummy, dummy = np.reshape(intData[it], (len(intData[it]), 17)).T
         
-    ndt = len(t)
+        ip            = np.array(ip,        dtype=int)
+        jp            = np.array(jp,        dtype=int)
+        contState     = np.array(contState, dtype=int)
+        frictContacts = np.where(contState> 1)[0]
+        stickContacts = np.where(contState==2)[0]
+        slideContacts = np.where(contState==3)[0]
         
-    maxClustersSize = [np.max([int(x) for x in np.frombuffer(np.loadtxt(rigFile, skiprows=it+1, max_rows=1))]) for it in range(ndt)]
+        partsInCont = [[] for i in range(NP)]
+        for i in frictContacts:
+            partsInCont[ip[i]].append(jp[i])
+            partsInCont[jp[i]].append(ip[i])
         
-    nMaxFile = open(Dir+"maxClusterSize.txt", "w")
-    for k in range(ndt):
-        nMaxFile.write(str(maxClustersSize[k]) + '\n')
-    nMaxFile.close()
+        numConstraintsPerPart = np.zeros(NP, dtype=int)
+        for i in range(stickContacts.size):
+            numConstraintsPerPart[ip[stickContacts[i]]] += 2
+            numConstraintsPerPart[jp[stickContacts[i]]] += 2
+        for i in range(slideContacts.size):
+            numConstraintsPerPart[ip[slideContacts[i]]] += 1
+            numConstraintsPerPart[jp[slideContacts[i]]] += 1
+        
+        numFrictContactsPerPart = np.zeros(NP, dtype=int)
+        for i in range(frictContacts.size):
+            numFrictContactsPerPart[ip[frictContacts[i]]] += 1
+            numFrictContactsPerPart[jp[frictContacts[i]]] += 1
+        
+        C3PartsIDs = np.where(numConstraintsPerPart>=3)[0]
+        
+        K2PartsIDs = np.where(numFrictContactsPerPart>=2)[0]
+        K3PartsIDs = np.where(numFrictContactsPerPart>=3)[0]
+        K4PartsIDs = np.where(numFrictContactsPerPart>=4)[0]
+        
+        F_C3[it]   = len(C3PartsIDs)
+        F_K2[it]   = len(K2PartsIDs)
+        F_K3[it]   = len(K3PartsIDs)
+        F_K4[it]   = len(K4PartsIDs)
+        
+        # C3 clusters
+        C3Clusters_it = []
+        for i in frictContacts:
+            if ip[i] in C3PartsIDs and jp[i] not in C3PartsIDs:
+                ip_already_in_C3_cluster = False
+                for j in range(len(C3Clusters_it)):
+                    if ip[i] in C3Clusters_it[j]:
+                        ip_already_in_C3_cluster = True
+                        break
+                if not ip_already_in_C3_cluster:
+                    C3Clusters_it.append([ip[i]])
+            elif ip[i] not in C3PartsIDs and jp[i] in C3PartsIDs:
+                jp_already_in_C3_cluster = False
+                for j in range(len(C3Clusters_it)):
+                    if jp[i] in C3Clusters_it[j]:
+                        jp_already_in_C3_cluster = True
+                        break
+                if not jp_already_in_C3_cluster:
+                    C3Clusters_it.append([jp[i]])
+            elif ip[i] in C3PartsIDs and jp[i] in C3PartsIDs:
+                ip_already_in_C3_cluster = False
+                jp_already_in_C3_cluster = False
+                for j in range(len(C3Clusters_it)):
+                    if ip[i] in C3Clusters_it[j] and jp[i] not in C3Clusters_it[j]:
+                        ip_already_in_C3_cluster = True
+                        jp_already_in_C3_cluster = True
+                        C3Clusters_it[j].append(jp[i])
+                    elif ip[i] not in C3Clusters_it[j] and jp[i] in C3Clusters_it[j]:
+                        ip_already_in_C3_cluster = True
+                        jp_already_in_C3_cluster = True
+                        C3Clusters_it[j].append(ip[i])
+                if not ip_already_in_C3_cluster and not jp_already_in_C3_cluster:
+                    C3Clusters_it.append([ip[i], jp[i]])
+        C3Clusters_it = list(merge_common(C3Clusters_it))
+        if len(C3Clusters_it) > 0:
+            if len(np.concatenate(C3Clusters_it)) != len(C3PartsIDs):
+                sys.exit("ERROR: something's wrong with clusters_it")
+        elif len(C3Clusters_it) == 0 and len(C3PartsIDs) != 0:
+            sys.exit("ERROR: something's wrong with clusters_it")
+        C3Clusters.append(C3Clusters_it)
+        C3ClustersSizes.append([len(C3Clusters_it[i]) for i in range(len(C3Clusters_it))])
+        
+        # K2 clusters
+        K2Clusters_it = []
+        for i in frictContacts:
+            if ip[i] in K2PartsIDs and jp[i] not in K2PartsIDs:
+                ip_already_in_K2_cluster = False
+                for j in range(len(K2Clusters_it)):
+                    if ip[i] in K2Clusters_it[j]:
+                        ip_already_in_K2_cluster = True
+                        break
+                if not ip_already_in_K2_cluster:
+                    K2Clusters_it.append([ip[i]])
+            elif ip[i] not in K2PartsIDs and jp[i] in K2PartsIDs:
+                jp_already_in_K2_cluster = False
+                for j in range(len(K2Clusters_it)):
+                    if jp[i] in K2Clusters_it[j]:
+                        jp_already_in_K2_cluster = True
+                        break
+                if not jp_already_in_K2_cluster:
+                    K2Clusters_it.append([jp[i]])
+            elif ip[i] in K2PartsIDs and jp[i] in K2PartsIDs:
+                ip_already_in_K2_cluster = False
+                jp_already_in_K2_cluster = False
+                for j in range(len(K2Clusters_it)):
+                    if ip[i] in K2Clusters_it[j] and jp[i] not in K2Clusters_it[j]:
+                        ip_already_in_K2_cluster = True
+                        jp_already_in_K2_cluster = True
+                        K2Clusters_it[j].append(jp[i])
+                    elif ip[i] not in K2Clusters_it[j] and jp[i] in K2Clusters_it[j]:
+                        ip_already_in_K2_cluster = True
+                        jp_already_in_K2_cluster = True
+                        K2Clusters_it[j].append(ip[i])
+                if not ip_already_in_K2_cluster and not jp_already_in_K2_cluster:
+                    K2Clusters_it.append([ip[i], jp[i]])
+        K2Clusters_it = list(merge_common(K2Clusters_it))
+        if len(K2Clusters_it) > 0:
+            if len(np.concatenate(K2Clusters_it)) != len(K2PartsIDs):
+                sys.exit("ERROR: something's wrong with clusters_it")
+        elif len(K2Clusters_it) == 0 and len(K2PartsIDs) != 0:
+            sys.exit("ERROR: something's wrong with clusters_it")
+        K2Clusters.append(K2Clusters_it)
+        K2ClustersSizes.append([len(K2Clusters_it[i]) for i in range(len(K2Clusters_it))])
+        
+        # K3 clusters
+        K3Clusters_it = []
+        for i in frictContacts:
+            if ip[i] in K3PartsIDs and jp[i] not in K3PartsIDs:
+                ip_already_in_K3_cluster = False
+                for j in range(len(K3Clusters_it)):
+                    if ip[i] in K3Clusters_it[j]:
+                        ip_already_in_K3_cluster = True
+                        break
+                if not ip_already_in_K3_cluster:
+                    K3Clusters_it.append([ip[i]])
+            elif ip[i] not in K3PartsIDs and jp[i] in K3PartsIDs:
+                jp_already_in_K3_cluster = False
+                for j in range(len(K3Clusters_it)):
+                    if jp[i] in K3Clusters_it[j]:
+                        jp_already_in_K3_cluster = True
+                        break
+                if not jp_already_in_K3_cluster:
+                    K3Clusters_it.append([jp[i]])
+            elif ip[i] in K3PartsIDs and jp[i] in K3PartsIDs:
+                ip_already_in_K3_cluster = False
+                jp_already_in_K3_cluster = False
+                for j in range(len(K3Clusters_it)):
+                    if ip[i] in K3Clusters_it[j] and jp[i] not in K3Clusters_it[j]:
+                        ip_already_in_K3_cluster = True
+                        jp_already_in_K3_cluster = True
+                        K3Clusters_it[j].append(jp[i])
+                    elif ip[i] not in K3Clusters_it[j] and jp[i] in K3Clusters_it[j]:
+                        ip_already_in_K3_cluster = True
+                        jp_already_in_K3_cluster = True
+                        K3Clusters_it[j].append(ip[i])
+                if not ip_already_in_K3_cluster and not jp_already_in_K3_cluster:
+                    K3Clusters_it.append([ip[i], jp[i]])
+        K3Clusters_it = list(merge_common(K3Clusters_it))
+        if len(K3Clusters_it) > 0:
+            if len(np.concatenate(K3Clusters_it)) != len(K3PartsIDs):
+                sys.exit("ERROR: something's wrong with clusters_it")
+        elif len(K3Clusters_it) == 0 and len(K3PartsIDs) != 0:
+            sys.exit("ERROR: something's wrong with clusters_it")
+        K3Clusters.append(K3Clusters_it)
+        K3ClustersSizes.append([len(K3Clusters_it[i]) for i in range(len(K3Clusters_it))])
+        
+        # K4 clusters
+        K4Clusters_it = []
+        for i in frictContacts:
+            if ip[i] in K4PartsIDs and jp[i] not in K4PartsIDs:
+                ip_already_in_K4_cluster = False
+                for j in range(len(K4Clusters_it)):
+                    if ip[i] in K4Clusters_it[j]:
+                        ip_already_in_K4_cluster = True
+                        break
+                if not ip_already_in_K4_cluster:
+                    K4Clusters_it.append([ip[i]])
+            elif ip[i] not in K4PartsIDs and jp[i] in K4PartsIDs:
+                jp_already_in_K4_cluster = False
+                for j in range(len(K4Clusters_it)):
+                    if jp[i] in K4Clusters_it[j]:
+                        jp_already_in_K4_cluster = True
+                        break
+                if not jp_already_in_K4_cluster:
+                    K4Clusters_it.append([jp[i]])
+            elif ip[i] in K4PartsIDs and jp[i] in K4PartsIDs:
+                ip_already_in_K4_cluster = False
+                jp_already_in_K4_cluster = False
+                for j in range(len(K4Clusters_it)):
+                    if ip[i] in K4Clusters_it[j] and jp[i] not in K4Clusters_it[j]:
+                        ip_already_in_K4_cluster = True
+                        jp_already_in_K4_cluster = True
+                        K4Clusters_it[j].append(jp[i])
+                    elif ip[i] not in K4Clusters_it[j] and jp[i] in K4Clusters_it[j]:
+                        ip_already_in_K4_cluster = True
+                        jp_already_in_K4_cluster = True
+                        K4Clusters_it[j].append(ip[i])
+                if not ip_already_in_K4_cluster and not jp_already_in_K4_cluster:
+                    K4Clusters_it.append([ip[i], jp[i]])
+        K4Clusters_it = list(merge_common(K4Clusters_it))
+        if len(K4Clusters_it) > 0:
+            if len(np.concatenate(K4Clusters_it)) != len(K4PartsIDs):
+                sys.exit("ERROR: something's wrong with clusters_it")
+        elif len(K4Clusters_it) == 0 and len(K4PartsIDs) != 0:
+            sys.exit("ERROR: something's wrong with clusters_it")
+        K4Clusters.append(K4Clusters_it)
+        K4ClustersSizes.append([len(K4Clusters_it[i]) for i in range(len(K4Clusters_it))])
+    
+    # C3 files
+    
+    FC3File = open(Dir+"F_C3.txt", "w")
+    FC3File.write("t                F_C3" + '\n')
+    for it in range(ndt):
+        FC3File.write('{:.4f}'.format(t[it]) + '      ' + str(F_C3[it])  + '\n')
+    FC3File.close()
+    
+    C3File = open(Dir+"C3_clusters.txt", "w")
+    C3File.write("#C>=3 Clusters Sizes" + '\n')
+    for it in range(ndt):
+        if len(C3ClustersSizes[it]) == 0:
+            C3File.write("0   \n")
+        else:
+            for i in range(len(C3ClustersSizes[it])):
+                C3File.write(str(C3ClustersSizes[it][i]) + '   ')
+            C3File.write("\n")
+    C3File.write("\n")
+    C3File.write("#C>=3 Clusters IDs" + '\n')
+    for it in range(ndt):
+        C3File.write('#snapshot = ' + str(it) + '\n')
+        if len(C3ClustersSizes[it]) == 0:
+            C3File.write("0\n")
+        else:
+            for i in range(len(C3Clusters[it])):
+                for j in range(len(C3Clusters[it][i])):
+                    if j < len(C3Clusters[it][i])-1:
+                        C3File.write(str(C3Clusters[it][i][j]) + ',')
+                    else:
+                        C3File.write(str(C3Clusters[it][i][j]))
+                C3File.write("\n")
+    C3File.close()
+    
+    # K2 files
+    
+    FK2File = open(Dir+"F_K2.txt", "w")
+    FK2File.write("t                F_K2" + '\n')
+    for it in range(ndt):
+        FK2File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K2[it])  + '\n')
+    FK2File.close()
+    
+    K2File = open(Dir+"K2_clusters.txt", "w")
+    K2File.write("#C>=3 Clusters Sizes" + '\n')
+    for it in range(ndt):
+        if len(K2ClustersSizes[it]) == 0:
+            K2File.write("0   \n")
+        else:
+            for i in range(len(K2ClustersSizes[it])):
+                K2File.write(str(K2ClustersSizes[it][i]) + '   ')
+            K2File.write("\n")
+    K2File.write("\n")
+    K2File.write("#C>=3 Clusters IDs" + '\n')
+    for it in range(ndt):
+        K2File.write('#snapshot = ' + str(it) + '\n')
+        if len(K2ClustersSizes[it]) == 0:
+            K2File.write("0\n")
+        else:
+            for i in range(len(K2Clusters[it])):
+                for j in range(len(K2Clusters[it][i])):
+                    if j < len(K2Clusters[it][i])-1:
+                        K2File.write(str(K2Clusters[it][i][j]) + ',')
+                    else:
+                        K2File.write(str(K2Clusters[it][i][j]))
+                K2File.write("\n")
+    K2File.close()
+    
+    # K3 files
+    
+    FK3File = open(Dir+"F_K3.txt", "w")
+    FK3File.write("t                F_K3" + '\n')
+    for it in range(ndt):
+        FK3File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K3[it])  + '\n')
+    FK3File.close()
+    
+    K3File = open(Dir+"K3_clusters.txt", "w")
+    K3File.write("#C>=3 Clusters Sizes" + '\n')
+    for it in range(ndt):
+        if len(K3ClustersSizes[it]) == 0:
+            K3File.write("0   \n")
+        else:
+            for i in range(len(K3ClustersSizes[it])):
+                K3File.write(str(K3ClustersSizes[it][i]) + '   ')
+            K3File.write("\n")
+    K3File.write("\n")
+    K3File.write("#C>=3 Clusters IDs" + '\n')
+    for it in range(ndt):
+        K3File.write('#snapshot = ' + str(it) + '\n')
+        if len(K3ClustersSizes[it]) == 0:
+            K3File.write("0\n")
+        else:
+            for i in range(len(K3Clusters[it])):
+                for j in range(len(K3Clusters[it][i])):
+                    if j < len(K3Clusters[it][i])-1:
+                        K3File.write(str(K3Clusters[it][i][j]) + ',')
+                    else:
+                        K3File.write(str(K3Clusters[it][i][j]))
+                K3File.write("\n")
+    K3File.close()
+    
+    # K4 files
+    
+    FK4File = open(Dir+"F_K4.txt", "w")
+    FK4File.write("t                F_K4" + '\n')
+    for it in range(ndt):
+        FK4File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K4[it])  + '\n')
+    FK4File.close()
+    
+    K4File = open(Dir+"K4_clusters.txt", "w")
+    K4File.write("#C>=3 Clusters Sizes" + '\n')
+    for it in range(ndt):
+        if len(K4ClustersSizes[it]) == 0:
+            K4File.write("0   \n")
+        else:
+            for i in range(len(K4ClustersSizes[it])):
+                K4File.write(str(K4ClustersSizes[it][i]) + '   ')
+            K4File.write("\n")
+    K4File.write("\n")
+    K4File.write("#C>=3 Clusters IDs" + '\n')
+    for it in range(ndt):
+        K4File.write('#snapshot = ' + str(it) + '\n')
+        if len(K4ClustersSizes[it]) == 0:
+            K4File.write("0\n")
+        else:
+            for i in range(len(K4Clusters[it])):
+                for j in range(len(K4Clusters[it][i])):
+                    if j < len(K4Clusters[it][i])-1:
+                        K4File.write(str(K4Clusters[it][i][j]) + ',')
+                    else:
+                        K4File.write(str(K4Clusters[it][i][j]))
+                K4File.write("\n")
+    K4File.close()
 
 
 
@@ -788,6 +1096,103 @@ def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
             file2.write("{:.6f}".format(grtheta[indw1][indw2]) + '      ')
         file2.write('\n')
     file2.close()
+
+
+
+
+
+#%% CONTACT DISTRIBUTION
+
+def conts_distribution(Dir, SSi):
+    
+    baseName = os.path.basename(glob.glob(Dir+'data_*.dat')[0]).removeprefix('data_')
+    dataFile = Dir + 'data_' + baseName
+    parFile  = Dir + 'par_'  + baseName
+    intFile  = Dir + 'int_'  + baseName
+    
+    t,     dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
+    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, \
+    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy  \
+        = np.loadtxt(dataFile, skiprows=37).transpose()
+        
+    ndt = len(t)
+    
+    NP = int(np.genfromtxt(dataFile, skip_header=1, max_rows=1, comments='!')[2])
+    
+    dummy, dummy, rx, rz, vx, dummy, vz, dummy, omy, dummy, dummy = np.loadtxt(parFile).reshape(ndt,NP,11).transpose(2,0,1)
+        
+    with open(intFile) as file:
+        fileLines = file.readlines()[20:]
+    intData   = []
+    counter   = -1
+    isNewTime = False
+    for line in fileLines:
+        if "#" in line:
+            if not isNewTime:
+                intData.append([])
+                isNewTime  = True
+                counter   += 1
+        else:
+            intData[counter].append([float(item) for item in line.split()])
+            isNewTime = False
+    if len(intData) != ndt:
+        sys.exit("ERROR: something's wrong with the reading of intFile")
+    del file, fileLines, line, counter, isNewTime
+
+    anglesBinsEdges   = np.linspace(0, 360, int(360/5)+1) * np.pi / 180
+    anglesBinsCenters = 0.5*(anglesBinsEdges[1:]+anglesBinsEdges[:-1])
+    
+    anglesDists       = np.zeros(len(anglesBinsCenters))
+    normContFDists    = np.zeros(len(anglesBinsCenters))
+    tanContFDists     = np.zeros(len(anglesBinsCenters))
+    
+    anglesDists_t     = np.zeros((ndt-SSi,len(anglesBinsCenters)))
+    normContFDists_t  = np.zeros((ndt-SSi,len(anglesBinsCenters)))
+    tanContFDists_t   = np.zeros((ndt-SSi,len(anglesBinsCenters)))
+    
+    for it in range(ndt-SSi):
+        
+        ip, jp, nx, dummy, nz, xi, normLub, tanLubX, dummy, tanLubZ, contState, normCont, tanContX, dummy, tanContZ, dummy, normRep = np.reshape(intData[it+SSi], (len(intData[it+SSi]), 17)).T
+        
+        ip            = np.array(ip,        dtype=int)
+        jp            = np.array(jp,        dtype=int)
+        contState     = np.array(contState, dtype=int)
+        frictContacts = np.where(contState>1)[0]
+        
+        nij           = np.array([nx,nz]).T
+        tanContVecs   = np.array([tanContX,tanContZ]).T
+        tanCont       = np.linalg.norm(tanContVecs, axis=1)
+    
+        angles_it     = []
+        
+        for j in frictContacts:
+            alpha1  = np.arctan2(nz[j],nx[j])
+            if alpha1 < 0: alpha1 += 2*np.pi
+            alpha2  = alpha1 - np.pi
+            if alpha2 < 0: alpha2 += 2*np.pi
+            binId1  = np.where(np.logical_and(alpha1>=anglesBinsEdges[0:-1], alpha1<=anglesBinsEdges[1:]))[0][0]
+            binId2  = np.where(np.logical_and(alpha2>=anglesBinsEdges[0:-1], alpha2<=anglesBinsEdges[1:]))[0][0]
+            angles_it.append(alpha1)
+            angles_it.append(alpha2)
+            normContFDists_t[it][binId1] += normCont[j]
+            normContFDists_t[it][binId2] += normCont[j]
+            tanContFDists_t[it][binId1]  += np.sign(np.cross(tanContVecs[j],nij[j]))*tanCont[j]
+            tanContFDists_t[it][binId2]  += np.sign(np.cross(tanContVecs[j],nij[j]))*tanCont[j]
+        if angles_it != []:
+            anglesDists_t[it], dummy = np.histogram(angles_it, bins=anglesBinsEdges, density=True)
+        del angles_it
+        
+        Fn0                   = np.mean(normContFDists_t[it])
+        normContFDists_t[it] /= Fn0
+        tanContFDists_t[it]  /= Fn0
+        
+    anglesDists    = np.mean(anglesDists_t,    axis=0)
+    normContFDists = np.mean(normContFDists_t, axis=0)
+    tanContFDists  = np.mean(tanContFDists_t,  axis=0)
+    
+    np.savetxt(Dir+"contactDistribution_angles.txt",    np.array([anglesBinsCenters, anglesDists]),    delimiter='      ', fmt='%.9f', header='anglesBinsCenters      anglesDists')
+    np.savetxt(Dir+"contactDistribution_normForce.txt", np.array([anglesBinsCenters, normContFDists]), delimiter='      ', fmt='%.9f', header='anglesBinsCenters      normContFDists')
+    np.savetxt(Dir+"contactDistribution_tanForce.txt",  np.array([anglesBinsCenters, tanContFDists]),  delimiter='      ', fmt='%.9f', header='anglesBinsCenters      tanContFDists')
 
 
 

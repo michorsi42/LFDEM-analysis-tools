@@ -654,9 +654,9 @@ def KC_parts(Dir):
         C3Clusters_it = list(merge_common(C3Clusters_it))
         if len(C3Clusters_it) > 0:
             if len(np.concatenate(C3Clusters_it)) != len(C3PartsIDs):
-                sys.exit("ERROR: something's wrong with clusters_it")
+                sys.exit("ERROR: something's wrong with C3Clusters_it")
         elif len(C3Clusters_it) == 0 and len(C3PartsIDs) != 0:
-            sys.exit("ERROR: something's wrong with clusters_it")
+            sys.exit("ERROR: something's wrong with C3Clusters_it")
         C3Clusters.append(C3Clusters_it)
         C3ClustersSizes.append([len(C3Clusters_it[i]) for i in range(len(C3Clusters_it))])
         
@@ -696,9 +696,9 @@ def KC_parts(Dir):
         K2Clusters_it = list(merge_common(K2Clusters_it))
         if len(K2Clusters_it) > 0:
             if len(np.concatenate(K2Clusters_it)) != len(K2PartsIDs):
-                sys.exit("ERROR: something's wrong with clusters_it")
+                sys.exit("ERROR: something's wrong with K2Clusters_it")
         elif len(K2Clusters_it) == 0 and len(K2PartsIDs) != 0:
-            sys.exit("ERROR: something's wrong with clusters_it")
+            sys.exit("ERROR: something's wrong with K2Clusters_it")
         K2Clusters.append(K2Clusters_it)
         K2ClustersSizes.append([len(K2Clusters_it[i]) for i in range(len(K2Clusters_it))])
         
@@ -738,9 +738,9 @@ def KC_parts(Dir):
         K3Clusters_it = list(merge_common(K3Clusters_it))
         if len(K3Clusters_it) > 0:
             if len(np.concatenate(K3Clusters_it)) != len(K3PartsIDs):
-                sys.exit("ERROR: something's wrong with clusters_it")
+                sys.exit("ERROR: something's wrong with K3Clusters_it")
         elif len(K3Clusters_it) == 0 and len(K3PartsIDs) != 0:
-            sys.exit("ERROR: something's wrong with clusters_it")
+            sys.exit("ERROR: something's wrong with K3Clusters_it")
         K3Clusters.append(K3Clusters_it)
         K3ClustersSizes.append([len(K3Clusters_it[i]) for i in range(len(K3Clusters_it))])
         
@@ -780,9 +780,9 @@ def KC_parts(Dir):
         K4Clusters_it = list(merge_common(K4Clusters_it))
         if len(K4Clusters_it) > 0:
             if len(np.concatenate(K4Clusters_it)) != len(K4PartsIDs):
-                sys.exit("ERROR: something's wrong with clusters_it")
+                sys.exit("ERROR: something's wrong with K4Clusters_it")
         elif len(K4Clusters_it) == 0 and len(K4PartsIDs) != 0:
-            sys.exit("ERROR: something's wrong with clusters_it")
+            sys.exit("ERROR: something's wrong with K4Clusters_it")
         K4Clusters.append(K4Clusters_it)
         K4ClustersSizes.append([len(K4Clusters_it[i]) for i in range(len(K4Clusters_it))])
     

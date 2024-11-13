@@ -613,10 +613,10 @@ def KC_parts(Dir):
         K3PartsIDs = np.where(numFrictContactsPerPart>=3)[0]
         K4PartsIDs = np.where(numFrictContactsPerPart>=4)[0]
         
-        F_C3[it]   = len(C3PartsIDs)
-        F_K2[it]   = len(K2PartsIDs)
-        F_K3[it]   = len(K3PartsIDs)
-        F_K4[it]   = len(K4PartsIDs)
+        F_C3.append(len(C3PartsIDs))
+        F_K2.append(len(K2PartsIDs))
+        F_K3.append(len(K3PartsIDs))
+        F_K4.append(len(K4PartsIDs))
         
         # C3 clusters
         C3Clusters_it = []

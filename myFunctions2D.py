@@ -530,7 +530,7 @@ def Z_C(Dir):
 
 
 #%% K>=n & C>=n
-### Identifying the particles with at least 2,3,4 contacts and particles with at least 3 constraints
+### Identifying the particles with at least 2,3,4 contacts and particles with at least 3,4,5 constraints
 
 def KC_parts(Dir):
 

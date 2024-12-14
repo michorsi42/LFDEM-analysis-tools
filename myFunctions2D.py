@@ -919,7 +919,7 @@ def KC_parts(Dir):
         FC4File.write('{:.4f}'.format(t[it]) + '      ' + str(F_C4[it])  + '\n')
     FC4File.close()
     C4File = open(Dir+"C4_clusters.txt", "w")
-    C4File.write("#C>=3 Clusters Sizes" + '\n')
+    C4File.write("#C>=4 Clusters Sizes" + '\n')
     for it in range(ndt):
         if len(C4ClustersSizes[it]) == 0:
             C4File.write("0   \n")
@@ -928,7 +928,7 @@ def KC_parts(Dir):
                 C4File.write(str(C4ClustersSizes[it][i]) + '   ')
             C4File.write("\n")
     C4File.write("\n")
-    C4File.write("#C>=3 Clusters IDs" + '\n')
+    C4File.write("#C>=4 Clusters IDs" + '\n')
     for it in range(ndt):
         C4File.write('#snapshot = ' + str(it) + '\n')
         if len(C4ClustersSizes[it]) == 0:
@@ -950,7 +950,7 @@ def KC_parts(Dir):
         FC5File.write('{:.4f}'.format(t[it]) + '      ' + str(F_C5[it])  + '\n')
     FC5File.close()
     C5File = open(Dir+"C5_clusters.txt", "w")
-    C5File.write("#C>=3 Clusters Sizes" + '\n')
+    C5File.write("#C>=5 Clusters Sizes" + '\n')
     for it in range(ndt):
         if len(C5ClustersSizes[it]) == 0:
             C5File.write("0   \n")
@@ -959,7 +959,7 @@ def KC_parts(Dir):
                 C5File.write(str(C5ClustersSizes[it][i]) + '   ')
             C5File.write("\n")
     C5File.write("\n")
-    C5File.write("#C>=3 Clusters IDs" + '\n')
+    C5File.write("#C>=5 Clusters IDs" + '\n')
     for it in range(ndt):
         C5File.write('#snapshot = ' + str(it) + '\n')
         if len(C5ClustersSizes[it]) == 0:
@@ -981,7 +981,7 @@ def KC_parts(Dir):
         FK2File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K2[it])  + '\n')
     FK2File.close()
     K2File = open(Dir+"K2_clusters.txt", "w")
-    K2File.write("#C>=3 Clusters Sizes" + '\n')
+    K2File.write("#K>=2 Clusters Sizes" + '\n')
     for it in range(ndt):
         if len(K2ClustersSizes[it]) == 0:
             K2File.write("0   \n")
@@ -990,7 +990,7 @@ def KC_parts(Dir):
                 K2File.write(str(K2ClustersSizes[it][i]) + '   ')
             K2File.write("\n")
     K2File.write("\n")
-    K2File.write("#C>=3 Clusters IDs" + '\n')
+    K2File.write("#K>=2 Clusters IDs" + '\n')
     for it in range(ndt):
         K2File.write('#snapshot = ' + str(it) + '\n')
         if len(K2ClustersSizes[it]) == 0:
@@ -1012,7 +1012,7 @@ def KC_parts(Dir):
         FK3File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K3[it])  + '\n')
     FK3File.close()
     K3File = open(Dir+"K3_clusters.txt", "w")
-    K3File.write("#C>=3 Clusters Sizes" + '\n')
+    K3File.write("#K>=3 Clusters Sizes" + '\n')
     for it in range(ndt):
         if len(K3ClustersSizes[it]) == 0:
             K3File.write("0   \n")
@@ -1021,7 +1021,7 @@ def KC_parts(Dir):
                 K3File.write(str(K3ClustersSizes[it][i]) + '   ')
             K3File.write("\n")
     K3File.write("\n")
-    K3File.write("#C>=3 Clusters IDs" + '\n')
+    K3File.write("#K>=3 Clusters IDs" + '\n')
     for it in range(ndt):
         K3File.write('#snapshot = ' + str(it) + '\n')
         if len(K3ClustersSizes[it]) == 0:
@@ -1043,7 +1043,7 @@ def KC_parts(Dir):
         FK4File.write('{:.4f}'.format(t[it]) + '      ' + str(F_K4[it])  + '\n')
     FK4File.close()
     K4File = open(Dir+"K4_clusters.txt", "w")
-    K4File.write("#C>=3 Clusters Sizes" + '\n')
+    K4File.write("#K>=4 Clusters Sizes" + '\n')
     for it in range(ndt):
         if len(K4ClustersSizes[it]) == 0:
             K4File.write("0   \n")
@@ -1052,7 +1052,7 @@ def KC_parts(Dir):
                 K4File.write(str(K4ClustersSizes[it][i]) + '   ')
             K4File.write("\n")
     K4File.write("\n")
-    K4File.write("#C>=3 Clusters IDs" + '\n')
+    K4File.write("#K>=4 Clusters IDs" + '\n')
     for it in range(ndt):
         K4File.write('#snapshot = ' + str(it) + '\n')
         if len(K4ClustersSizes[it]) == 0:

@@ -760,19 +760,19 @@ def PDF(Dir, SSi, dr, dtheta, partsTypePDF):
         rho  += NPPDF / surf
 
         if NPPDF > 0:
-            xp = rx[it][partsIDs_it]
-            zp = rz[it][partsIDs_it]
+            xp   = rx[it][partsIDs_it]
+            zp   = rz[it][partsIDs_it]
             dxij = xp[:, None] - xp
             dzij = zp[:, None] - zp
 
             # z-periodicity (Lees Edwards)
-            dxij[dzij > Lz/2.] -= np.modf(gamma[it])[0] * Lz
-            dzij[dzij > Lz/2.] -= Lz
+            dxij[dzij >  Lz/2.] -= np.modf(gamma[it])[0] * Lz
+            dzij[dzij >  Lz/2.] -= Lz
             dxij[dzij < -Lz/2.] += np.modf(gamma[it])[0] * Lz
             dzij[dzij < -Lz/2.] += Lz
 
             # x-periodicity
-            dxij[dxij > Lx/2.]  -= Lx
+            dxij[dxij >  Lx/2.] -= Lx
             dxij[dxij < -Lx/2.] += Lx
 
             accumulate_gr_grtheta(dxij, dzij, rlin, thetalin, gr, grtheta, NPPDF, gamma[it], Lx, Lz, dr, dtheta)
